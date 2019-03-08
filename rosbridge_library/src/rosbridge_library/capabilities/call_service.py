@@ -32,9 +32,20 @@
 
 import fnmatch
 from functools import partial
+
 from rosbridge_library.capability import Capability
+from rosbridge_library.internal.message_conversion import extract_values as extract_json_values
+from rosbridge_library.internal.pngcompression import encode as encode_png
 from rosbridge_library.internal.services import ServiceCaller
 from rosbridge_library.util import string_types
+
+try:
+    from ujson import dumps as encode_json
+except ImportError:
+    try:
+        from simplejson import dumps as encode_json
+    except ImportError:
+        from json import dumps as encode_json
 
 
 class CallService(Capability):
@@ -98,7 +109,12 @@ class CallService(Capability):
         }
         if cid is not None:
             outgoing_message["id"] = cid
-        # TODO: fragmentation, compression
+
+        # TODO: fragmentation, cbor compression
+
+        if compression == 'png':
+            encoded_json = encode_json(message)
+            outgoing_message['values'] = encode_png(encoded_json)
         self.protocol.send(outgoing_message)
 
     def _failure(self, cid, service, exc):
